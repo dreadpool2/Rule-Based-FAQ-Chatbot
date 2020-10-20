@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="shortcut icon" href="">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <style type="text/css">
+
+            .header{
+                width:500px;
+                outline: none;
+            }
+            .send{
+                width: 40px;
+                height: 40px;
+                outline: none;
+                vertical-align: bottom;
+                margin-bottom: 5px;
+            }
+
+            .person{
+                width: 50px;
+                height: 50px;
+                outline: none;
+            }
+
+            .robot{
+                width: 50px;
+                outline: none;
+                height: 50px;
+            }
+            .userText{
+                vertical-align: middle;
+                float: right;
+                max-width: 210px;
+                color:#ebebeb;
+                outline: none;
+                background-color: #6f4a8e;
+                border-radius: 20px 20px 20px 0px;
+                padding: 10px;
+                font-family: monospace;
+            }
+            .botText{
+                max-width: 100%;
+                background-color: #221f3b;
+                color:#ebebeb;
+                border-radius: 20px 20px 0px 20px;
+                padding: 10px;
+                font-family: monospace;
+            }
+            .inputText{
+                width: 435.5px;
+                height: 50px;
+                font-family: monospace;
+                padding: 6px 8px 6px 8px;
+                box-shadow: 2px 2px 10px lightgrey;
+                outline: none;
+                border-radius: 0px 0px 20px 20px;
+                border: 0px;
+                margin-left:23px;
+                margin-top: 10px;
+            }
+            #mainBackground{
+                margin: 0 auto;
+                padding-left: 5px;
+                padding-right: 5px;
+                width: 440px;
+                height: 500px;
+                background-color: #f6f5f5;
+                box-shadow: 2px 2px 10px lightgrey;
+                border-radius: 20px 20px 0px 0px;
+                overflow-y: auto;
+            }
+            #mainBackground::-webkit-scrollbar {
+                display: none;
+            }
+        </style>
+    </head>
+    <body style="margin: 0 auto;width: 500px;margin-top: 100px">
+
+        <div class="header">   
+            <h1 style="text-align: center;font-family: monospace">Agent Query List</h1>
+            <br><br>
+
+        </div>     
+        <div id="maindiv">
+            <div id="mainBackground" class="mainBox">
+                <div id="chatbox" style="width: 100%; margin: 0 auto;">
+                    <table style="margin-left:auto;margin-top:20px">
+                        <tr>
+                            <td>
+                                <p id="temp" class="botText">Queries will arrive!</p>
+                            <td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+
+
+            <input id="queryNumber" type="text"  class = "inputText" name="msg" placeholder="query Number">
+            <input id="answerInput" type="text"  class = "inputText" name="msg" placeholder="answerInput">
+            <input id="statusInput" type="text"  class = "inputText" name="msg" placeholder="status">
+            <table style="margin: 0 auto;">
+                <tr>
+                    <td><input id="submitAll" type="submit" value="Send Response" style="margin-right: 20px;"></td>
+                    <td><input id="dropAll" type="submit" value="Drop All Queries"></td>
+                </tr>
+            </table>
+
+        </div>
+    </body>
+    <script>
+        $("#submitAll").click(function() {
+            setAgentHelp($("#queryNumber").val(), $("#answerInput").val(), $("#statusInput").val());
+        });
+        $("#dropAll").click(function() {
+            $.get("/dropAll", { timeStamp: timeStamp}).done(function(data) {
+                //document.getElementById("temp").innerHTML = data;
+            });
+        });
+
+
+        $(document).ready(function(){
+            setInterval(function(){
+                $.get("/agentHelp", { msg: "rawText" }).done(function(data) {
+
+                    document.getElementById("temp").innerHTML = data;
+
+                });
+            }, 3000);
+        });
+
+
+        function setAgentHelp(timeStamp, answer, status){
+            $.get("/agentSentHelp", { timeStamp: timeStamp, answer: answer, status: status }).done(function(data) {
+                //document.getElementById("temp").innerHTML = data;
+            });
+        }
+
+    </script>
+
+</html>

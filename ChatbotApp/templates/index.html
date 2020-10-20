@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="shortcut icon" href="">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <style type="text/css">
+
+            .header{
+                width:500px;
+                outline: none;
+            }
+            .send{
+                width: 40px;
+                height: 40px;
+                outline: none;
+                vertical-align: bottom;
+                margin-bottom: 5px;
+            }
+
+            .person{
+                width: 50px;
+                height: 50px;
+                outline: none;
+            }
+
+            .robot{
+                width: 50px;
+                outline: none;
+                height: 50px;
+            }
+            .userText{
+                vertical-align: middle;
+                float: right;
+                max-width: 210px;
+                color:#ebebeb;
+                outline: none;
+                background-color: #6f4a8e;
+                border-radius: 20px 20px 20px 0px;
+                padding: 10px;
+                font-family: monospace;
+            }
+            .botText{
+                max-width: 210px;
+                background-color: #221f3b;
+                color:#ebebeb;
+                border-radius: 20px 20px 0px 20px;
+                padding: 10px;
+                font-family: monospace;
+            }
+            .inputText{
+                width: 435.5px;
+                height: 50px;
+                font-family: monospace;
+                padding: 6px 8px 6px 8px;
+                box-shadow: 2px 2px 10px lightgrey;
+                outline: none;
+                border-radius: 0px 0px 20px 20px;
+                border: 0px;
+                margin-left:23px;
+                margin-top: 10px;
+            }
+            #mainBackground{
+                margin: 0 auto;
+                padding-left: 5px;
+                padding-right: 5px;
+                width: 440px;
+                height: 500px;
+                background-color: #f6f5f5;
+                box-shadow: 2px 2px 10px lightgrey;
+                border-radius: 20px 20px 0px 0px;
+                overflow-y: auto;
+            }
+            #mainBackground::-webkit-scrollbar {
+                display: none;
+            }
+        </style>
+    </head>
+    <body style="margin: 0 auto;width: 500px;margin-top: 100px">
+
+        <div class="header">   
+            <h1 style="text-align: center;font-family: monospace">FAQ Chatbot (CMS)</h1>
+            <br><br>
+
+        </div>     
+        <div id="maindiv">
+            <div id="mainBackground" class="mainBox">
+                <div id="chatbox" style="width: 100%; margin: 0 auto;">
+                    <table style="margin-left:auto;margin-top:20px">
+                        <tr>
+                            <td>
+                                <p class="botText">Hi! Ask me a query regarding CMS </p>
+                            <td>
+                            <td style="vertical-align:bottom;padding-bottom: 3px;">
+                                <img class="robot" src = "static/robot2.png" />
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+
+
+            <input id="textInput" type="text"  class = "inputText" name="msg" placeholder="Message">
+
+        </div>
+    </body>
+    <script>
+        //Get Bot response when query is entered
+
+        var status_fetch = true;
+        var type = "Typing...";
+        var i = 0;
+        function urlify(text) {
+            var urlRegex = /(http?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, function(url) {
+                return '<a href="' + url + '"> Link </a>';
+            })
+            // or alternatively
+            // return text.replace(urlRegex, '<a href="$1">$1</a>')
+        }
+
+        var temper = false;
+        var temp_Q = "";
+
+        var obj = document.getElementById("mainBackground");
+
+        function getBotResponse() {
+            var rawText = $("#textInput").val();
+            var newid = i.toString();
+            if(rawText == "")
+                return;
+
+            var userHtml = '<table><tr><td style="vertical-align:bottom;padding-bottom: 10px;"><img src = "static/person2.png" class="person"></td><td><p class="userText">' + rawText + '</p></td></tr></table>';
+            $("#textInput").val("");
+            $("#chatbox").append(userHtml);
+
+            var typing = '<table style="margin-left:auto"><tr><td><p id="'+newid+'" class="botText">' + type + '</p><td><td style="vertical-align:bottom;padding-bottom: 3px;"><img class="robot" src = "static/robot2.png" /></td></tr></table>';
+            $("#chatbox").append(typing);
+
+            //Did you mean case
+            if(temper){
+                if(rawText != "Yes" && rawText != "No"){
+                    document.getElementById(newid).innerHTML = "Please answer the above question!";
+                    status_fetch = true;
+                    i++;
+                    return;
+                }
+
+                if(rawText == "Yes"){
+                    document.getElementById(newid).innerHTML = temp_Q;
+                    status_fetch = true;
+                    temper = false;
+                    i++;
+                    return;
+                }
+                else if(rawText == "No"){
+                    
+                    //agent transition
+                    agentTransition(newid, obj, status_fetch);
+
+                    status_fetch = true;
+                    temper = false;
+                    i++;
+                    return;  
+                }
+            }
+            
+            //Agent transition function
+            function agentTransition(newid, obj, status_fetch){
+                var d = new Date();
+                var n = d.getTime();
+
+                document.getElementById(newid).innerHTML = "Wait! let me connect you to an agent...";
+                $.get("/getHelp", { tStmp:  n.toString(), question: "You?" }).done(function(data) {
+
+                    //Waiting for reply now
+                    $(document).ready(function(){
+                        setInterval(function(){
+                            $.get("/receiveHelp", { msg: n.toString() }).done(function(data) {
+
+                                document.getElementById(newid).innerHTML = data;
+
+                            });
+                        }, 3000);
+                    });
+
+                    status_fetch = true;
+
+                    if(obj.scrollHeight != null){
+                        obj.scrollTop = obj.scrollHeight;
+                    }
+                });
+            }
+
+            
+            //Normal query case!
+            $.get("/get", { msg: rawText }).done(function(data) {
+                var dataArray = data.split('|');
+
+                document.getElementById(newid).innerHTML = urlify(dataArray[1]);
+
+                if(dataArray[0] == -1){
+                    temper = true;
+                    temp_Q = dataArray[2];
+                }
+
+                status_fetch = true;
+
+                if(obj.scrollHeight != null){
+                    obj.scrollTop = obj.scrollHeight;
+                }
+            });
+            i++;
+        }
+
+        //Handles events when enter is pressed
+
+        $("#textInput").keypress(function(e) {
+            if(e.which == 13 & status_fetch) {
+                status_fetch = false;
+                getBotResponse();
+                if(obj.scrollHeight != null){
+                    obj.scrollTop = obj.scrollHeight;
+                }
+
+            }
+        });
+        //Handles events when button is pressed
+        $("#buttonInput").click(function() {
+            if(e.which == 13 & status_fetch) {
+                status_fetch = false;
+                getBotResponse();
+            }
+        });
+
+
+        function MyFunction(docurl) {
+            $.ajax({
+                url: '/opendoc',
+                data: {doc:docurl},
+                type: 'POST',
+                success: function(response) {
+                    console.log(response);
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+
+        }
+    </script>
+</html>
