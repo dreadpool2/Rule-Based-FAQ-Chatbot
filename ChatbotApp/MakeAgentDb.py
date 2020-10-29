@@ -14,7 +14,7 @@ sql = 'USE `Mammoth`'
 cursor.execute(sql)
 connec.commit()
 
-sql = 'CREATE TABLE IF NOT EXISTS `AgentHelp` (`Timestamp` TEXT, `User` TEXT, `Question` TEXT, `AgentAnswer` TEXT, `Status` TEXT)'
+sql = 'CREATE TABLE IF NOT EXISTS `AgentHelp` (`Divider` TEXT, `User` TEXT, `Question` TEXT, `AgentAnswer` TEXT, `Status` TEXT)'
 cursor.execute(sql)
 connec.commit()
 

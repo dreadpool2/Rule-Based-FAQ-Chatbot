@@ -44,7 +44,7 @@ class ChatbotManager():
         undo_pick_str = [np.loads(row) for row in self.dataset.Question_Vector]
         self.QUESTION_VECTORS = undo_pick_str
     
-        self.COSINE_THRESHOLD = 0.3
+        self.COSINE_THRESHOLD = 0.5
                 
         ##Create a Chatbot which answers separate personal unrelated questions. Here we have models related to politics, sports etc. 
         self.chitchat_bot = ChatBot(
@@ -144,11 +144,8 @@ class ChatbotManager():
         return answer
     
     
-    def get_agent_help(self, tStmp, question):
-        tSt = tStmp
-        user = "sanyog"
-        questioned = question
-        
+    def get_agent_help(self, user, question):
+        divider = "|"
         connec = mysq.connect(host = "localhost", user = "sanyog", password = "f20160635.stowe.pyc!")
    
 
@@ -157,8 +154,8 @@ class ChatbotManager():
         cursor.execute(sql)
         connec.commit()
                 
-        sql = "INSERT INTO `AgentHelp` (`Timestamp`, `User`, `Question`, `AgentAnswer`, `Status`) VALUES (%s, %s, %s, %s, %s)"
-        cursor.execute(sql, (tSt, user, questioned, "", "open"));
+        sql = "INSERT INTO `AgentHelp` (`Divider`, `User`, `Question`, `AgentAnswer`, `Status`) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(sql, (divider, user, question, "", "open"));
         connec.commit()
         
         ##The query has been pushed to the database. The agent will now select the query.
@@ -166,7 +163,7 @@ class ChatbotManager():
         connec.close()
 
     
-    def check_replies(self, timeStamp):
+    def check_replies(self, user):
         connec = mysq.connect(host = "localhost", user = "sanyog", password = "f20160635.stowe.pyc!")
    
 
@@ -180,11 +177,20 @@ class ChatbotManager():
         
         
         
-        df2 = pd.read_sql("SELECT `AgentAnswer` AS  `AgentAnswer` FROM AgentHelp WHERE `Timestamp` = '"+str(timeStamp)+"'", con=connec)
+        df2 = pd.read_sql("SELECT `AgentAnswer` AS `Ag`,`Status` AS `St` FROM AgentHelp WHERE `User` = '"+str(user)+"'", con=connec)
+        
+        
+        
+        if(df2.empty == False and df2.iloc[0][1] == 'closed'):
+            sql = "DELETE FROM AgentHelp WHERE `User` = '"+str(user)+"'"
+            cursor.execute(sql)
+            connec.commit()
+        
+        
         connec.close()
 
 
-        return df2.iloc[0][0];
+        return df2.iloc[0][0]
         
     ##BELOW FUNCTIONS RELATED TO AGENTS
     def get_all_data(self):
@@ -205,7 +211,7 @@ class ChatbotManager():
         return df2;    
 
     
-    def update_data_agent(self, timeStamp, answer, status):
+    def update_data_agent(self, user, answer, status):
         connec = mysq.connect(host = "localhost", user = "sanyog", password = "f20160635.stowe.pyc!")
    
 
@@ -214,9 +220,8 @@ class ChatbotManager():
         cursor.execute(sql)
         connec.commit()
                 
-        
-        sql = "UPDATE AgentHelp SET `AgentAnswer`='"+answer+"' WHERE `Timestamp` = '"+timeStamp+"'"
-        cursor.execute(sql);
+        sql = "UPDATE AgentHelp SET `AgentAnswer`=%s, `Status`=%s WHERE `User`=%s"        
+        cursor.execute(sql, (str(answer), str(status), str(user)));
         connec.commit()
         
         connec.close()
@@ -237,5 +242,33 @@ class ChatbotManager():
         connec.commit()
         
         connec.close()
+        
+## Below state admin portal functions
+
     
-    
+    def add_data(self, ques, ans):
+        a = list()
+        a.append(ques)
+        
+        connec = mysq.connect(host = "localhost", user = "sanyog", password = "f20160635.stowe.pyc!")
+   
+
+        cursor = connec.cursor()
+        sql = 'USE `Mammoth`'
+        cursor.execute(sql)
+        connec.commit()
+                
+        df = pd.read_sql("SELECT COUNT(*) FROM Dataset", con=connec)
+        
+        count = df.iloc[0][0]
+        
+        
+        
+        sql = "INSERT INTO `Dataset` (`No.`, `Question`, `Answer`, `Question_Vector`) VALUES (%s, %s, %s, %s)"   
+        
+        query_vec = self.embed(a)
+        pdArr = query_vec[0].dumps()
+        
+        cursor.execute(sql, (count, ques, ans, pdArr))
+        connec.commit()
+        connec.close()

@@ -104,7 +104,14 @@
 
         </div>
     </body>
-    <script>
+    <script type="module">
+        import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
+        var id = uuidv4(); // ⇨ '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'
+
+        function fetchSessionId(){
+            return id.toString();
+        };
+
         //Get Bot response when query is entered
 
         var status_fetch = true;
@@ -126,7 +133,6 @@
 
         function getBotResponse() {
             var rawText = $("#textInput").val();
-            var newid = i.toString();
             if(rawText == "")
                 return;
 
@@ -134,83 +140,92 @@
             $("#textInput").val("");
             $("#chatbox").append(userHtml);
 
-            var typing = '<table style="margin-left:auto"><tr><td><p id="'+newid+'" class="botText">' + type + '</p><td><td style="vertical-align:bottom;padding-bottom: 3px;"><img class="robot" src = "static/robot2.png" /></td></tr></table>';
+            var typing = '<table style="margin-left:auto"><tr><td><p id="'+i.toString()+'" class="botText">' + type + '</p><td><td style="vertical-align:bottom;padding-bottom: 3px;"><img class="robot" src = "static/robot2.png" /></td></tr></table>';
             $("#chatbox").append(typing);
 
             //Did you mean case
             if(temper){
                 if(rawText != "Yes" && rawText != "No"){
-                    document.getElementById(newid).innerHTML = "Please answer the above question!";
+                    document.getElementById(i.toString()).innerHTML = "Please answer the above question!";
                     status_fetch = true;
                     i++;
                     return;
                 }
 
                 if(rawText == "Yes"){
-                    document.getElementById(newid).innerHTML = temp_Q;
+                    document.getElementById(i.toString()).innerHTML = temp_Q;
                     status_fetch = true;
                     temper = false;
                     i++;
                     return;
                 }
                 else if(rawText == "No"){
-                    
-                    //agent transition
-                    agentTransition(newid, obj, status_fetch);
 
-                    status_fetch = true;
+                    //agent transition
+                    agentTransition(obj);
                     temper = false;
-                    i++;
                     return;  
                 }
             }
-            
-            //Agent transition function
-            function agentTransition(newid, obj, status_fetch){
-                var d = new Date();
-                var n = d.getTime();
 
-                document.getElementById(newid).innerHTML = "Wait! let me connect you to an agent...";
-                $.get("/getHelp", { tStmp:  n.toString(), question: "You?" }).done(function(data) {
+            //Agent transition function
+            function agentTransition(obj){
+                var user = fetchSessionId();
+                                    
+                status_fetch = false;
+                document.getElementById(i.toString()).innerHTML = "Wait! let me connect you to an agent...";
+                $.get("/getHelp", { user:  user, question: "You?" }).done(function(data) {
 
                     //Waiting for reply now
                     $(document).ready(function(){
-                        setInterval(function(){
-                            $.get("/receiveHelp", { msg: n.toString() }).done(function(data) {
+                        var qInterval = setInterval(function(){
+                            $.get("/receiveHelp", { user: user }).done(function(data) {
 
-                                document.getElementById(newid).innerHTML = data;
+                                if(data == ""){
+                                    document.getElementById(i.toString()).innerHTML = "Connected! Wait for a reply :)"
+                                }
+                                else{
+                                    document.getElementById(i.toString()).innerHTML = data;
+                                    status_fetch = true;
+                                    i++;
+                                    clearInterval(qInterval);
+                                    //stop interval
+                                }
 
                             });
                         }, 3000);
                     });
 
-                    status_fetch = true;
 
                     if(obj.scrollHeight != null){
                         obj.scrollTop = obj.scrollHeight;
                     }
+
                 });
             }
 
-            
+
             //Normal query case!
             $.get("/get", { msg: rawText }).done(function(data) {
                 var dataArray = data.split('|');
 
-                document.getElementById(newid).innerHTML = urlify(dataArray[1]);
+                document.getElementById(i.toString()).innerHTML = urlify(dataArray[1]);
+                status_fetch = true;
 
                 if(dataArray[0] == -1){
                     temper = true;
                     temp_Q = dataArray[2];
                 }
 
-                status_fetch = true;
 
                 if(obj.scrollHeight != null){
                     obj.scrollTop = obj.scrollHeight;
                 }
+
+                i++;
+
             });
-            i++;
+
         }
 
         //Handles events when enter is pressed
@@ -225,14 +240,7 @@
 
             }
         });
-        //Handles events when button is pressed
-        $("#buttonInput").click(function() {
-            if(e.which == 13 & status_fetch) {
-                status_fetch = false;
-                getBotResponse();
-            }
-        });
-
+    
 
         function MyFunction(docurl) {
             $.ajax({
@@ -248,5 +256,7 @@
             });
 
         }
+
     </script>
+
 </html>

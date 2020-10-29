@@ -3,11 +3,13 @@
     <head>
         <link rel="shortcut icon" href="">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
         <style type="text/css">
 
             .header{
                 width:500px;
                 outline: none;
+                margin: 0 auto;
             }
             .send{
                 width: 40px;
@@ -43,20 +45,23 @@
                 max-width: 100%;
                 background-color: #221f3b;
                 color:#ebebeb;
-                border-radius: 20px 20px 0px 20px;
+                height: 50px;
+                text-align: center;
+                border-radius: 20px 20px 20px 20px;
                 padding: 10px;
                 font-family: monospace;
             }
             .inputText{
                 width: 435.5px;
-                height: 50px;
+                height: 80px;
                 font-family: monospace;
                 padding: 6px 8px 6px 8px;
                 box-shadow: 2px 2px 10px lightgrey;
                 outline: none;
-                border-radius: 0px 0px 20px 20px;
+                border-radius: 10px 10px 10px 10px;
                 border: 0px;
                 margin-left:23px;
+                resize: none;
                 margin-top: 10px;
             }
             #mainBackground{
@@ -67,7 +72,7 @@
                 height: 500px;
                 background-color: #f6f5f5;
                 box-shadow: 2px 2px 10px lightgrey;
-                border-radius: 20px 20px 0px 0px;
+                border-radius: 20px 20px 20px 0px;
                 overflow-y: auto;
             }
             #mainBackground::-webkit-scrollbar {
@@ -75,68 +80,117 @@
             }
         </style>
     </head>
-    <body style="margin: 0 auto;width: 500px;margin-top: 100px">
+    <body style="margin: 0 auto;width: 950px;margin-top: 100px">
 
         <div class="header">   
             <h1 style="text-align: center;font-family: monospace">Agent Query List</h1>
             <br><br>
 
         </div>     
-        <div id="maindiv">
-            <div id="mainBackground" class="mainBox">
-                <div id="chatbox" style="width: 100%; margin: 0 auto;">
-                    <table style="margin-left:auto;margin-top:20px">
-                        <tr>
-                            <td>
-                                <p id="temp" class="botText">Queries will arrive!</p>
-                            <td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-
-
-
-            <input id="queryNumber" type="text"  class = "inputText" name="msg" placeholder="query Number">
-            <input id="answerInput" type="text"  class = "inputText" name="msg" placeholder="answerInput">
-            <input id="statusInput" type="text"  class = "inputText" name="msg" placeholder="status">
-            <table style="margin: 0 auto;">
+        <div id="maindiv" >
+            <table>
                 <tr>
-                    <td><input id="submitAll" type="submit" value="Send Response" style="margin-right: 20px;"></td>
-                    <td><input id="dropAll" type="submit" value="Drop All Queries"></td>
-                </tr>
-            </table>
+                    <td>
+                        <div id="mainBackground" class="mainBox">
+                            <div id="chatbox" class="abc" style="width: 100%; margin: 0 auto;">
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <input id="userName" type="text"  class = "inputText" name="msg" placeholder="userName">
+                        <textarea id="answerInput" class = "inputText" placeholder="answerInput"></textarea>
 
+                        <div style="margin-left: 20px;margin-top: 20px;">
+                            <table>
+                                <tr>
+                                    <td>
+                                        <select style="height: 40px;width: 90px;font-family: monospace;outline: none;margin-right: 175px" name="status" id="statusInput">
+                                            <option value="open">Open</option>
+                                            <option value="ongoing">Ongoing</option>
+                                            <option value="closed">Closed</option>
+                                        </select>
+                                    </td>
+                                    <td align=Right>
+                                        <input id="dropAll" type="submit" style="height: 40px;width: 90px;font-family: monospace" value="Drop All">
+                                    </td>
+                                    <td>
+                                        <input id="submitAll" type="submit" style="height: 40px;width: 90px;font-family: monospace;background-color: black;color: aliceblue;cursor: pointer" value="Send">
+                                    </td>
+
+                                </tr>
+
+                            </table>
+                        </div>
+
+                    </td>
+                </tr>
+
+            </table>
         </div>
     </body>
     <script>
+
+        //list all queries
+        var storedId = -1;
+
+        function onQueryClicked(id){
+            
+            var text = document.getElementById(id).innerHTML;
+            document.getElementById("userName").value = text.split(/(\s+)/)[2];
+        }
+
+
+
+        function createQueryMessage(query, id){
+
+            //var element = '<p class="query">'+session_id+'<br>'+question+'<br>'+answer+'<br>'+status+'</p>';
+            var element = '<p id = "'+id+'" class="query botText" onclick = "onQueryClicked(this.id)" style="cursor:pointer" >'+query+'</p>';
+
+            $("#chatbox").append(element);
+        }
+
+
         $("#submitAll").click(function() {
-            setAgentHelp($("#queryNumber").val(), $("#answerInput").val(), $("#statusInput").val());
-        });
-        $("#dropAll").click(function() {
-            $.get("/dropAll", { timeStamp: timeStamp}).done(function(data) {
-                //document.getElementById("temp").innerHTML = data;
-            });
+            //for now, whenever the agent sends a reply, the status updates to closed.
+            // in future ongoing will be taken care of
+            setAgentHelp($("#userName").val(), $("#answerInput").val(), "closed");
         });
 
+        $("#dropAll").click(function() {
+            $.get("/dropAll", function(data) {
+            });
+        });
 
         $(document).ready(function(){
             setInterval(function(){
                 $.get("/agentHelp", { msg: "rawText" }).done(function(data) {
 
-                    document.getElementById("temp").innerHTML = data;
+                    var arr = data.split("|");
+                    var numItems = $('.query').length;
 
+                    var diff = (arr.length-1) - numItems;
+
+                    if(diff != 0){
+
+                        var starting_index = numItems;
+                        var i = 0;
+                        for(i = starting_index; i < arr.length-1; i++){
+                            createQueryMessage(arr[i+1], $('.query').length);
+                        }
+                        
+                    }                    
                 });
             }, 3000);
         });
 
 
-        function setAgentHelp(timeStamp, answer, status){
-            $.get("/agentSentHelp", { timeStamp: timeStamp, answer: answer, status: status }).done(function(data) {
+        function setAgentHelp(userName, answer, status){
+            $.get("/agentSentHelp", { userName: userName, answer: answer, status: status }).done(function(data) {
                 //document.getElementById("temp").innerHTML = data;
             });
         }
 
     </script>
+
 
 </html>
