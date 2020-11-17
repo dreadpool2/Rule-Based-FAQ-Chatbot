@@ -5,19 +5,33 @@ import tensorflow_hub as hub
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 from absl import logging
-
+import time
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import logging
-
+import json
 logging.warning('This will get logged to a file')
 import sentencepiece as spm
 import numpy as np
 
+##load the model which converts user's query to vectors
+##module = hub.Module("/var/www/html/ChatbotApp/universal-sentence-encoder-lite_1")    
+  
+graph = tf.Graph()
+with tf.Session(graph = graph) as session:
+    module = hub.Module("/var/www/html/ChatbotApp/universal-sentence-encoder-lite_1")       
+    input_placeholder = tf.sparse_placeholder(tf.int64, shape=[None, None])
+    embeddings = module(
+        inputs=dict(
+            values=input_placeholder.values,
+            indices=input_placeholder.indices,
+            dense_shape=input_placeholder.dense_shape))
 
+    
 class ChatbotManager():
     
-        
+    
+    
     def __init__(self):
  
             #init cursor which points to db
@@ -38,12 +52,12 @@ class ChatbotManager():
         
         #self.model = tf.saved_model.load("../data/tmp/mobilenet/1/")
         self.dataset = df
-        self.questions = self.dataset.Question
         
         #convert pickle string to np array
         undo_pick_str = [np.loads(row) for row in self.dataset.Question_Vector]
-        self.QUESTION_VECTORS = undo_pick_str
-    
+        
+        self.dataset.Question_Vector = undo_pick_str
+        
         self.COSINE_THRESHOLD = 0.5
                 
         ##Create a Chatbot which answers separate personal unrelated questions. Here we have models related to politics, sports etc. 
@@ -53,15 +67,13 @@ class ChatbotManager():
             database_uri='sqlite:////var/www/html/ChatbotApp/db.sqlite3'
         ) 
         
+        
     def embed(self,input):
-        ##load the model which converts user's query to vectors
-        module = hub.Module("/var/www/html/ChatbotApp/universal-sentence-encoder-lite_1")
-        
-        
-        with tf.Session() as sess:
+       
+        with tf.Session(graph = graph) as sess:
             spm_path = sess.run(module(signature="spm_path"))
         sp = spm.SentencePieceProcessor()
-        sp.Load(spm_path)
+        sp.Load(spm_path)  
         
         def process_to_IDs_in_sparse_format(sentences):
           # An utility method that processes sentences with the sentence piece processor
@@ -75,15 +87,8 @@ class ChatbotManager():
             return (values, indices, dense_shape)
     
 
-        input_placeholder = tf.sparse_placeholder(tf.int64, shape=[None, None])
-        embeddings = module(
-            inputs=dict(
-                values=input_placeholder.values,
-                indices=input_placeholder.indices,
-                dense_shape=input_placeholder.dense_shape))
-
         values, indices, dense_shape = process_to_IDs_in_sparse_format(input)
-        with tf.Session() as session:
+        with tf.Session(graph = graph) as session:
             session.run([tf.global_variables_initializer(), tf.tables_initializer()])
             message_embeddings = session.run(
                   embeddings,
@@ -97,20 +102,37 @@ class ChatbotManager():
       
         return np.inner(v1, v2) 
         
-        
-    def semantic_search(self, query, data, vectors):    
-        ##convert the query to vectors and perform cosine similarity between all rows vectors and query vectors.
-        
+    def semantic_search(self, query):    
+        ##convert the query to vectors and perform cosine similarity for all rows vectors and query vectors.
+        '''
         query_vec = self.embed(query)
         res = []
-        for i, d in enumerate(data):
-            qvec = vectors[i].ravel()
+        for i in range(0, self.dataset.size):
+            qvec = self.dataset.Question_Vector[i].ravel()
             sim = self.cosine_similarity(query_vec[0], qvec)
-            res.append((sim, d[:100], i))
-
+            res.append((sim, i))
         
-        return sorted(res, key=lambda x : x[0], reverse=True)    
+        '''
+        df2 = self.dataset
+        
+        def func(query_vec, que_vec):
+            qvec = que_vec.ravel()
+            sim = self.cosine_similarity(query_vec[0], qvec)
+            return sim
+            
+        #start = time.process_time()
+        query_vec = self.embed(query)
+        #return (time.process_time() - start)
 
+        #df2['Similarity'] = func(query_vec, df2['Question_Vector'].values)
+        
+        # your code here    
+        df2['Similarity'] = df2.apply(lambda row : func(query_vec, row['Question_Vector']), axis = 1)
+        
+        df2.sort_values(by=['Similarity'], ascending = False, inplace  = True)
+        
+        return df2
+        
     
     def generate_faq_answer(self, question):
         a = list()
@@ -119,27 +141,15 @@ class ChatbotManager():
         div = "|"
         
         
-        most_relevant_row = self.semantic_search(a, self.questions, self.QUESTION_VECTORS)
+        most_relevant_row = self.semantic_search(a)
     
-        if most_relevant_row[0][0]>=self.COSINE_THRESHOLD:
-            answer =  "0" + div + self.dataset.Answer[most_relevant_row[0][2]] + div + ""
+        
+        if most_relevant_row.iloc[0][4]>=self.COSINE_THRESHOLD:
+            answer =  "0" + div + most_relevant_row.iloc[0][2] + div + ""
         else:
-            '''
-            q_vec = self.embed(a)
-            cAns = self.chitchat_bot.get_response(question)
-            d = list()
-            d.append(str(cAns))
-            
-            vex = self.embed(d)
-            sim = self.cosine_similarity(q_vec[0][:5], vex[0][:5])
-            
-            
-            stre = "Hello"+str(sim)+"Helo"
-            answer =  stre+div+stre+div+stre
-            '''
-            answer = "-1" + div + "Did you mean to ask <span style='color:white'><br><u>"+most_relevant_row[0][1]+"</u></span> (Yes/No)" + div + self.dataset.Answer[most_relevant_row[0][2]]
+            answer = "-1" + div + "Did you mean to ask <span style='color:white'><br><u>"+most_relevant_row.iloc[0][1]+"</u></span><br><br> Type <span style='font-weight:1000 !important'>(Yes&#124;No&#124;AgentHelp)</span>" + div + most_relevant_row.iloc[0][2] + div + question
             ##answer = self.chitchat_bot.get_response(question)
-            
+        
             
         return answer
     
@@ -207,8 +217,11 @@ class ChatbotManager():
   
  
         connec.close()
-
-        return df2;    
+        
+        
+        #dictionary  = {'ids': df2['User'], 'questions' : df2['Question'], 'statuses' : df2['Status']};
+        
+        return str(df2.to_json());    
 
     
     def update_data_agent(self, user, answer, status):
@@ -242,8 +255,36 @@ class ChatbotManager():
         connec.commit()
         
         connec.close()
+     
+    def set_ongoing(self, id):
+        connec = mysq.connect(host = "localhost", user = "sanyog", password = "f20160635.stowe.pyc!")
+   
+
+        cursor = connec.cursor()
+        sql = 'USE `Mammoth`'
+        cursor.execute(sql)
+        connec.commit()
+                
+        df = pd.read_sql("SELECT `Status` FROM AgentHelp WHERE `User`='"+str(id)+"'", con=connec)
         
-## Below state admin portal functions
+        if(df.empty):
+            connec.close()    
+            return "Query already solved!"  
+        elif(df.iloc[0][0] == "Ongoing"):
+            connec.close()    
+            return "Failure"
+        else:
+            #Set status ongoing
+            cursor.execute("UPDATE AgentHelp SET `Status`='Ongoing'  WHERE `User`='"+str(id)+"'");
+            connec.commit()
+            connec.close()    
+            return "Success"
+        
+        return "Success"
+            
+        
+        
+    ## Below state admin portal functions
 
     
     def add_data(self, ques, ans):

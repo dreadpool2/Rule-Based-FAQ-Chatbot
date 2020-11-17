@@ -28,7 +28,8 @@ def send_agent_help():
 ##In agents page
 @app.route("/agentHelp")
 def get_live_queries():
-    return str(dialogue_manager.get_all_data())
+    
+    return dialogue_manager.get_all_data()
 
 ##index page when question and answer received from agent
 @app.route("/receiveHelp")
@@ -58,6 +59,12 @@ def add_data():
     ans = request.args.get('answer')
     
     dialogue_manager.add_data(ques, ans)
+    
+@app.route("/setOngoing")    
+def set_ongoing():
+    id = request.args.get('sessionId')
+    ##return whether succesfull or not
+    return str(dialogue_manager.set_ongoing(id))
 
 #if __name__ == "__main__":
 #    app.run()

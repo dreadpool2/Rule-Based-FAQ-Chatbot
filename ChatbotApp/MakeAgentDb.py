@@ -18,4 +18,8 @@ sql = 'CREATE TABLE IF NOT EXISTS `AgentHelp` (`Divider` TEXT, `User` TEXT, `Que
 cursor.execute(sql)
 connec.commit()
 
+sql = 'CREATE TABLE IF NOT EXISTS `DeleteQueries` (`User` TEXT)'
+cursor.execute(sql)
+connec.commit()
+
 

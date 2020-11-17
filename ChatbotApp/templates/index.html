@@ -91,7 +91,7 @@
                                 <p class="botText">Hi! Ask me a query regarding CMS </p>
                             <td>
                             <td style="vertical-align:bottom;padding-bottom: 3px;">
-                                <img class="robot" src = "static/robot2.png" />
+                                <img class="robot" src = "static/images/robot2.png" />
                             </td>
                         </tr>
                     </table>
@@ -127,7 +127,9 @@
         }
 
         var temper = false;
+        var temp_A = "";
         var temp_Q = "";
+        
 
         var obj = document.getElementById("mainBackground");
 
@@ -136,30 +138,38 @@
             if(rawText == "")
                 return;
 
-            var userHtml = '<table><tr><td style="vertical-align:bottom;padding-bottom: 10px;"><img src = "static/person2.png" class="person"></td><td><p class="userText">' + rawText + '</p></td></tr></table>';
+            var userHtml = '<table><tr><td style="vertical-align:bottom;padding-bottom: 10px;"><img src = "static/images/person2.png" class="person"></td><td><p class="userText">' + rawText + '</p></td></tr></table>';
             $("#textInput").val("");
             $("#chatbox").append(userHtml);
 
-            var typing = '<table style="margin-left:auto"><tr><td><p id="'+i.toString()+'" class="botText">' + type + '</p><td><td style="vertical-align:bottom;padding-bottom: 3px;"><img class="robot" src = "static/robot2.png" /></td></tr></table>';
+            var typing = '<table style="margin-left:auto"><tr><td><p id="'+i.toString()+'" class="botText">' + type + '</p><td><td style="vertical-align:bottom;padding-bottom: 3px;"><img class="robot" src = "static/images/robot2.png" /></td></tr></table>';
             $("#chatbox").append(typing);
 
             //Did you mean case
             if(temper){
-                if(rawText != "Yes" && rawText != "No"){
+                var rawed = rawText.toLowerCase();
+                if(rawed != "yes" && rawed != "no" && rawed != "agenthelp"){
                     document.getElementById(i.toString()).innerHTML = "Please answer the above question!";
                     status_fetch = true;
                     i++;
                     return;
                 }
 
-                if(rawText == "Yes"){
-                    document.getElementById(i.toString()).innerHTML = temp_Q;
+                if(rawed == "yes"){
+                    document.getElementById(i.toString()).innerHTML = temp_A;
                     status_fetch = true;
                     temper = false;
                     i++;
                     return;
                 }
-                else if(rawText == "No"){
+                else if(rawed == "no"){
+                    document.getElementById(i.toString()).innerHTML = "Please frame your question better!";
+                    status_fetch = true;
+                    temper = false;
+                    i++;
+                    return;  
+                }
+                else if(rawed == "agenthelp"){
 
                     //agent transition
                     agentTransition(obj);
@@ -174,7 +184,7 @@
                                     
                 status_fetch = false;
                 document.getElementById(i.toString()).innerHTML = "Wait! let me connect you to an agent...";
-                $.get("/getHelp", { user:  user, question: "You?" }).done(function(data) {
+                $.get("/getHelp", { user:  user, question: temp_Q}).done(function(data) {
 
                     //Waiting for reply now
                     $(document).ready(function(){
@@ -212,11 +222,13 @@
                 document.getElementById(i.toString()).innerHTML = urlify(dataArray[1]);
                 status_fetch = true;
 
+            
                 if(dataArray[0] == -1){
                     temper = true;
-                    temp_Q = dataArray[2];
-                }
-
+                    temp_A = dataArray[2];
+                    temp_Q = dataArray[3];
+                }                
+                
 
                 if(obj.scrollHeight != null){
                     obj.scrollTop = obj.scrollHeight;

@@ -2,6 +2,7 @@
 <html>
     <head>
         <link rel="shortcut icon" href="">
+        <link rel="stylesheet" href="../static/css/progressbar.css">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 
         <style type="text/css">
@@ -73,6 +74,7 @@
                 background-color: #f6f5f5;
                 box-shadow: 2px 2px 10px lightgrey;
                 border-radius: 20px 20px 20px 0px;
+                opacity: 1;
                 overflow-y: auto;
             }
             #mainBackground::-webkit-scrollbar {
@@ -80,7 +82,7 @@
             }
         </style>
     </head>
-    <body style="margin: 0 auto;width: 950px;margin-top: 100px">
+    <body style="margin: 0 auto;width: 950px;margin-top: 100px;font-family: monospace">
 
         <div class="header">   
             <h1 style="text-align: center;font-family: monospace">Agent Query List</h1>
@@ -96,8 +98,19 @@
                             </div>
                         </div>
                     </td>
-                    <td>
-                        <input id="userName" type="text"  class = "inputText" name="msg" placeholder="userName">
+                    <td id="tdSubmit" style="pointer-events: none">
+                        <div id="queryDiv" style="margin-left: 28px;visibility:hidden">
+                            <p>Query</p>
+                            <div style="width:200px;height:1px;background-color: grey;margin-top: 5px"></div>
+                            <p id="querySelec" style="color: black; font-size:30px;margin-top:5px"> </p>
+        
+                        </div>
+                        <div id = "progress" class="slider" style="margin-left: 28px; width: 435px;visibility: hidden;margin-top: 5px;">
+                            <div class="line"></div>
+                            <div class="subline inc"></div>
+                            <div class="subline dec"></div>
+                        </div>
+                        <input id="userName" type="text"  class = "inputText" name="msg" placeholder="userName" style="visibility: collapse">
                         <textarea id="answerInput" class = "inputText" placeholder="answerInput"></textarea>
 
                         <div style="margin-left: 20px;margin-top: 20px;">
@@ -111,7 +124,7 @@
                                         </select>
                                     </td>
                                     <td align=Right>
-                                        <input id="dropAll" type="submit" style="height: 40px;width: 90px;font-family: monospace" value="Drop All">
+                                        <input id="dropAll" type="submit" style="height: 40px;width: 90px;font-family: monospace;pointer-events: all" value="Drop All">
                                     </td>
                                     <td>
                                         <input id="submitAll" type="submit" style="height: 40px;width: 90px;font-family: monospace;background-color: black;color: aliceblue;cursor: pointer" value="Send">
@@ -128,69 +141,5 @@
             </table>
         </div>
     </body>
-    <script>
-
-        //list all queries
-        var storedId = -1;
-
-        function onQueryClicked(id){
-            
-            var text = document.getElementById(id).innerHTML;
-            document.getElementById("userName").value = text.split(/(\s+)/)[2];
-        }
-
-
-
-        function createQueryMessage(query, id){
-
-            //var element = '<p class="query">'+session_id+'<br>'+question+'<br>'+answer+'<br>'+status+'</p>';
-            var element = '<p id = "'+id+'" class="query botText" onclick = "onQueryClicked(this.id)" style="cursor:pointer" >'+query+'</p>';
-
-            $("#chatbox").append(element);
-        }
-
-
-        $("#submitAll").click(function() {
-            //for now, whenever the agent sends a reply, the status updates to closed.
-            // in future ongoing will be taken care of
-            setAgentHelp($("#userName").val(), $("#answerInput").val(), "closed");
-        });
-
-        $("#dropAll").click(function() {
-            $.get("/dropAll", function(data) {
-            });
-        });
-
-        $(document).ready(function(){
-            setInterval(function(){
-                $.get("/agentHelp", { msg: "rawText" }).done(function(data) {
-
-                    var arr = data.split("|");
-                    var numItems = $('.query').length;
-
-                    var diff = (arr.length-1) - numItems;
-
-                    if(diff != 0){
-
-                        var starting_index = numItems;
-                        var i = 0;
-                        for(i = starting_index; i < arr.length-1; i++){
-                            createQueryMessage(arr[i+1], $('.query').length);
-                        }
-                        
-                    }                    
-                });
-            }, 3000);
-        });
-
-
-        function setAgentHelp(userName, answer, status){
-            $.get("/agentSentHelp", { userName: userName, answer: answer, status: status }).done(function(data) {
-                //document.getElementById("temp").innerHTML = data;
-            });
-        }
-
-    </script>
-
-
+    <script type="text/javascript" src="../static/js/agents_js.js"></script>
 </html>
